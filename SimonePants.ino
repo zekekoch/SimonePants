@@ -45,7 +45,6 @@ const int NUM_STRIPS = 7;
 
 CRGB leds[NUM_STRIPS][ledCount];
 CRGB ledsX[ledCount]; //-ARRAY FOR COPYING WHATS IN THE LED STRIP CURRENTLY (FOR CELL-AUTOMATA, ETC)
-const byte ledCounts[] = { };
 
 int ledMode = 25;      //-START IN DEMO MODE
 //int ledMode = 5;
@@ -64,6 +63,9 @@ int lcount = 0;      //-ANOTHER COUNTING VAR
 
 //-SET THE COLOR OF A SINGLE RGB LED
 void setPixel(int adex, int cred, int cgrn, int cblu) {
+    if (adex < 0 || adex > ledCount-1)
+        return;
+
     for(int i = 0;i<NUM_STRIPS;i++)
     {
         leds[i][adex] = CRGB(cred, cgrn, cblu);
@@ -71,6 +73,9 @@ void setPixel(int adex, int cred, int cgrn, int cblu) {
 }
 
 void setPixel(int adex, CRGB c) {
+    if (adex < 0 || adex > ledCount-1)
+        return;
+
     for(int i = 0;i<NUM_STRIPS;i++)
     {
         leds[i][adex] = c;
@@ -97,39 +102,76 @@ int antipodal_index(int i) {
 
 
 //-FIND ADJACENT INDEX CLOCKWISE
-int adjacent_cw(int i) {
-    int r;
-    if (i < ledCount - 1) {
-        r = i + 1;
+int adjacent_cw_looped(int i) {
+    int r;  
+    if (i < 0) {
+        r = ledCount + i;
     }
-    else {
+    else if (i == ledCount  - 1)
+    {
         r = 0;
     }
+    else if (i > ledCount - 1) {
+        r = 0 + (i-ledCount);
+    }
+    else {
+        r = i + 1;
+    }
+
+    Serial.print("cw from ");Serial.print(i);Serial.print(" to ");Serial.print(r);Serial.println();
     return r;
 }
 
+int adjacent_cw(int i) {
+    int r;  
+    if (i < 0) {
+        r = 0;
+    }
+    else if (i >= ledCount - 1) {
+        r = ledCount;
+    }
+    else {
+        r = i + 1;
+    }
+
+    Serial.print("cw from ");Serial.print(i);Serial.print(" to ");Serial.print(r);Serial.println();
+    return r;
+}
 
 //-FIND ADJACENT INDEX COUNTER-CLOCKWISE
 int adjacent_ccw(int i) {
     int r;
-    if (i > 0 && i <= ledCount) {
-        r = i - 1;
+
+    if (i <= 0) {
+        r = 0;
     }
-    else {
+    else if (i > ledCount) {
         r = ledCount - 1;
     }
+    else {
+        r = i - 1;
+    }
+
+    Serial.print("ccw from ");Serial.print(i);Serial.print(" to ");Serial.print(r);Serial.println();
     return r;
 }
 
+//-FIND ADJACENT INDEX COUNTER-CLOCKWISE
+int adjacent_ccw_looped(int i) {
+    int r;
 
-//-CONVERT HSV VALUE TO RGB
-void HSVtoRGB2(int hue, int sat, int val, int colors[3]) {
-    Serial.println("depricate HSVtoRGB with int array");
-    CRGB c;
-    hsv2rgb_rainbow(CHSV(hue, sat, val), c);
-    colors[0] = c.r;
-    colors[1] = c.g;
-    colors[2] = c.b;
+    if (i <= 0) {
+        r = ledCount + i - 1;
+    }
+    else if (i >= ledCount) {
+        r = ledCount - i;
+    }
+    else {
+        r = i - 1;
+    }
+
+    Serial.print("ccw from ");Serial.print(i);Serial.print(" to ");Serial.print(r);Serial.println();
+    return r;
 }
 
 void HSVtoRGB(int hue, int sat, int val, CRGB& c) {
@@ -183,7 +225,7 @@ void fillSolid(byte strand, const CRGB& color)
 
 void fillSolid(CRGB color)
 {
-    for(int i = 0;i<7;i++)
+    for(int i = 0;i<NUM_STRIPS;i++)
         fillSolid(i, color);
 }
 
@@ -220,7 +262,7 @@ void rainbow_loop(int istep, int idelay) { //-LOOP HSV RAINBOW
 void random_burst(int idelay) { //-RANDOM INDEX/COLOR
     CRGB icolor;
     
-    idex = random(0,ledCount);
+    idex = random(0,ledCount-1);
     ihue = random(0,255);
     
     HSVtoRGB(ihue, 255, 255, icolor);
@@ -294,11 +336,12 @@ void musicReactiveFade(byte eq[7]) { //-BOUNCE COLOR (SIMPLE MULTI-LED FADE)
 
     int bass = (eq[0] + eq[1] + eq[3]) / 3;
     int high = (eq[4] + eq[5] + eq[6]) / 3;
-    //Serial.print("init bass ");Serial.print(bass);Serial.print(" and high ");Serial.println(high);
+    Serial.print("init bass ");Serial.print(bass);Serial.print(" and high ");Serial.println(high);
+    
     
     if((bass > 100) && (millis() > (lastBounceTime + bounceInterval)))
     {
-     //   Serial.println("reversing");
+        Serial.println("reversing");
         bounceForward = !bounceForward;
         lastBounceTime = millis();
     }
@@ -312,27 +355,37 @@ void musicReactiveFade(byte eq[7]) { //-BOUNCE COLOR (SIMPLE MULTI-LED FADE)
     fillSolid(CRGB::Black);
     
     if (bounceForward) {
-        //Serial.print("bouncing forward");Serial.println(idex);
+        Serial.print("bouncing forward idex:");Serial.print(idex);Serial.println();
+
+        if (idex < ledCount) {
+            idex++;
+        } else if (idex == ledCount) {
+            bounceForward = !bounceForward;
+        }
+
         for(int i = 0;i<trailLength;i++)
         {
+            //Serial.print(" to ");Serial.println(adjacent_cw(idex+i));
             setPixel(adjacent_cw(idex-i), HSVtoRGB(hue, 255, 255 - trailDecay*i));
         }
-        idex++;
-        if (idex == ledCount) {
-            bounceForward = !bounceForward;
-            idex--;
-        }
     } else {
-        //Serial.print("bouncing backwards idex:");Serial.print(idex);
-        // todo: the trail is running off the array
+        if (idex > ledCount) {
+            idex = ledCount;
+        }
+        if (idex >= 0) {
+            idex--;
+        } else if (idex == 0) {
+            bounceForward = !bounceForward;
+        } else
+        {
+            idex = 0;
+        }
+
+        Serial.print("bouncing backwards idex:");Serial.print(idex);Serial.println();
         for(int i = 0;i<trailLength;i++)
         {
             //Serial.print(" to ");Serial.println(adjacent_ccw(idex+i));
             setPixel(adjacent_ccw(idex+i), HSVtoRGB(hue, 255, 255 - trailDecay*i));
-        }
-        idex--;
-        if (idex == 0) {
-            bounceForward = !bounceForward;
         }
     }
     
@@ -800,7 +853,6 @@ int getModeFromSerial() {
         return iMode;
     }
 }
-
 
 //------------------MAIN LOOP------------------
 void loop() {

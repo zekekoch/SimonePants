@@ -7,7 +7,9 @@
  ### MOSTLY DESIGNED FOR A LOOP/RING OF LEDS (ORIGINALLY FOR A SIGN)
  ### BUT PLENTY USEFUL FOR A LINEAR STRIP TOO
  
- ### NOTES:
+ ### NOTES:26
+ 26
+ 
  ### - THESE ARE EXAMPLES, NOT A 'LIBRARY', MEANING YOU'LL PROBABLY HAVE TO CUT AND PASTE
  ### - TESTED WITH WS2801 AND WS2811 USING ARDUINO DUEMENELOVE 328, USING THE NEWEST FAST_SPI LIBRARY
  ###        THE NEWEST ONE FIXES ISSUES WITH WS2801
@@ -41,6 +43,8 @@ const byte ledCount = 14;
 int BOTTOM_INDEX = 0;
 int TOP_INDEX = int(ledCount/2);
 int EVENODD = ledCount%2;
+int FIRST_THIRD = int(ledCount/3);
+
 const int NUM_STRIPS = 7;
 
 CRGB leds[NUM_STRIPS][ledCount];
@@ -97,6 +101,14 @@ int antipodal_index(int i) {
     //int N2 = int(ledCount/2);
     int iN = i + TOP_INDEX;
     if (i >= TOP_INDEX) {iN = ( i + TOP_INDEX ) % ledCount; }
+    return iN;
+}
+
+int nextThird(int i) {
+    int iN = i + (int)(ledCount / 3);
+    if (iN >= ledCount) {
+        iN = iN % ledCount;
+    }
     return iN;
 }
 
@@ -817,6 +829,26 @@ void pacman(int idelay) { //-MARCH STRIP C-W
     }
 }
 
+void fourthOfJuly() { //-red, white and blue
+    idex++;
+    if (idex >= ledCount) {idex = 0;}
+    int idexR = idex;
+    int idexW = nextThird(idexR);
+    int idexB = nextThird(idexW);
+    setPixel(idexR, 255, 0, 0);
+    setPixel(idexW, 255, 255, 255);
+    setPixel(idexB, 0, 0, 255);
+}
+
+void rotatingRainbow()
+{
+    static byte hue = 0;
+    for(int i = 0;i < 7;i++)
+    {
+        fill_rainbow(leds[i], ledCount, hue++, 20);
+    }
+}
+
 //------------------SETUP------------------
 void setup()
 {
@@ -917,7 +949,9 @@ void loop() {
     if (ledMode == 23) {rainbow_vertical(10, 20);}       //--- VERITCAL RAINBOW
     if (ledMode == 24) {pacman(100);}                     //--- PACMAN
     if (ledMode == 25) {musicReactiveFade(payload.eq);}
-    
+    if (ledMode == 26) {fourthOfJuly();}
+    if (ledMode == 27) {rotatingRainbow();}
+
     if (ledMode == 98) {strip_march_ccw(100);}           //--- MARCH WHATEVERS ON THE STRIP NOW CC-W
     if (ledMode == 99) {strip_march_cw(100);}            //--- MARCH WHATEVERS ON THE STRIP NOW C-W
     
